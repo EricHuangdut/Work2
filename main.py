@@ -1,4 +1,3 @@
-import queue
 import random
 
 import requests
@@ -6,7 +5,6 @@ import openpyxl
 from openpyxl import Workbook
 import numpy as np
 from tqdm import tqdm  # 进度条设置
-from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib
@@ -26,14 +24,12 @@ class GaMultiobjective(object):
     def __init__(self):
         # =========定义群=========
         self.NP = 500  # 种群个数 尝试更大的种群
-        self.max_gen = 900  # 最大迭代次数
+        self.max_gen = 900 # 最大迭代次数
         self.max_mission = 10  # 无人机最多执行的任务个数
         # self.min_x = [-10] 算法测试用例中的范围下限
         # self.max_x = [10]  算法测试用例中的范围上限
         self.Pc = 0.7  # 交叉率
-        self.min_Pc = 0.5
         self.Pm = 0.3  # 变异率
-        self.max_Pm = 0.5
         self.maxsolution = 5000
         self.N = 1  # 变量个数
         self.num_target = 20  # 区域内的目标数，可调整
@@ -58,7 +54,7 @@ class GaMultiobjective(object):
         self.resourcesA = 1000  # 无人机总资源
         self.resourcesB = 2000  # 无人机总资源
         self.resourcesC = 2000  # 无人机总资源
-        self.velocityA = 150  # 侦察无人机速度
+        self.velocityA = 200  # 侦察无人机速度
         self.velocityB = 120  # 打击无人机速度
         self.velocityC = 180  # 一体无人机速度
         self.maxtime = 40  # 无人机最大巡航时间
@@ -69,16 +65,11 @@ class GaMultiobjective(object):
         self.pos = [[]]  # 存放目标的初始位置
         self.gain = [[]]  # 存放目标的价值评分
         self.threat = []  # 存放目标的威胁程度
-        self.ex = [1, 3, 6, 11, 14, 17]
         # self.parent = np.random.randint(0, 2, (self.NP, self.N, self.L))  # 随机获得二进制 初始种群f.shape (50,1, 20) .1表示有1个变量
 
     # 计算两点间距离
     def dis(self, x1, x2, y1, y2):
         dist = np.sqrt(np.square(x1 - x2) + np.square(y1 - y2))
-        return dist
-
-    def dis_3d(self, x1, x2, y1, y2, z1, z2):
-        dist = np.sqrt(np.square(x1 - x2) + np.square(y1 - y2) + np.square(z1 - z2))
         return dist
 
     # 对初始数据集的计算
@@ -208,19 +199,6 @@ class GaMultiobjective(object):
 
         return threat_radius
 
-    def settimewindow(self, timewindow):
-        initT = True
-        self.ex = [1, 3, 6, 11, 14, 17]
-        if (initT):
-
-            for i in range(self.num_target):
-                timewindow[i, 0] = 5
-                timewindow[i, 1] = 9999
-                if i not in self.ex:
-                    timewindow[i, 1] = 10
-
-        return timewindow
-
     # 已完成验证，可以实现任务序列的排序
     # 有向图排序，
     def reorder(self, task):
@@ -258,7 +236,7 @@ class GaMultiobjective(object):
         return ord
 
     # 每个无人机可以做有限个任务
-
+    # 这里可能存在正确性的问题？
     def reallo(self, allo, len):
         #    print("allo = ",allo)
         temp = [[0 for i in range(0, 2)] for i in range(0, 2 * self.num_target - len)]  # 2维，存放排序后的allo方案
@@ -409,17 +387,17 @@ class GaMultiobjective(object):
 
         # 排除掉不需要干扰的目标
         # 这里这个数据集要改的
-        self.ex = [3, 7, 13, 23, 31, 35]  # 属于目标2，4，7，12，16，18 // 1,3,6,11,15,17
-        #    self.ex = [3, 7, 13, 21, 27]  # 属于目标2，4，7，11，14 // 1,3,6,10,13
-        task = [0 for i in range(0, 2 * self.num_target - len(self.ex))]
+        ex = [3, 7, 13, 23, 31, 35]  # 属于目标2，4，7，12，16，18 // 1,3,6,11,15,17
+        #    ex = [3, 7, 13, 21, 27]  # 属于目标2，4，7，11，14 // 1,3,6,10,13
+        task = [0 for i in range(0, 2 * self.num_target - len(ex))]
         task = np.array(task)
         ind = 0
         conf = 0
         for i in range(0, len(taskord)):
-            for j in range(0, len(self.ex)):
-                if (taskord[i] != self.ex[j]):  # 全检索
+            for j in range(0, len(ex)):
+                if (taskord[i] != ex[j]):  # 全检索
                     conf = conf
-                if (taskord[i] == self.ex[j]):
+                if (taskord[i] == ex[j]):
                     conf = 1
             if (conf == 0):
                 task[ind] = taskord[i]
@@ -432,7 +410,7 @@ class GaMultiobjective(object):
         n = 0
         cnt = 0
         # 为无人机分配任务,这里先得到一个初始仅约束无人机任务种类的序列，这里逻辑和已经排好序的task相关
-        for i in range(L1, L1 + L2 - len(self.ex) * 4):
+        for i in range(L1, L1 + L2 - len(ex) * 4):
             if (cnt < 4):
                 n = f[i] * np.power(2, cnt) + n  # 转化成10进制
                 cnt = cnt + 1
@@ -463,17 +441,17 @@ class GaMultiobjective(object):
 
                         n = 0
                     count = count + 1
-        Allo = [[0 for i in range(0, 2)] for i in range(0, 2 * self.num_target - len(self.ex))]
+        Allo = [[0 for i in range(0, 2)] for i in range(0, 2 * self.num_target - len(ex))]
         Allo = np.array(Allo)
         for i in range(0, len(Allo)):
             Allo[i, 0] = allo[i, 0]
             Allo[i, 1] = allo[i, 1]
 
         # 感觉这步可能有点多余，因为要去除不执行的任务，保留一部分
-        allo = self.reallo(Allo, len(self.ex))  # 需要写一个reallo函数对allo调整顺序，这里涉及到无人机执行任务数量约束
+        allo = self.reallo(Allo, len(ex))  # 需要写一个reallo函数对allo调整顺序，这里涉及到无人机执行任务数量约束
         # allo的输出结果为一个2维变量，格式为[任务编号，执行的无人机编号]
 
-        Finalorder = [[0 for i in range(0, 2)] for i in range(0, 2 * self.num_target - len(self.ex))]
+        Finalorder = [[0 for i in range(0, 2)] for i in range(0, 2 * self.num_target - len(ex))]
         Finalorder = np.array(Finalorder)
         for i in range(0, len(task)):
             for j in range(0, len(Finalorder)):
@@ -529,13 +507,14 @@ class GaMultiobjective(object):
         #    print("m=",m)
         ans = self.subseq(m, sub, n)
         ans = np.array(ans)
-        #    print("ans =",ans)
 
         index = 0
         for i in range(len(seq)):
             if (seq[i, 0] == uavnum):
                 seq[i, 1] = ans[index]
                 index = index + 1
+
+        #    print("seq =",seq)
 
         return seq
 
@@ -571,138 +550,7 @@ class GaMultiobjective(object):
         for i in range(len(seq)):
             seq[i] = s[seq[i]] - self.num_uav
 
-        return seq
-
-    def timewindow_ord(self, order):
-        # seq = 最终输出序列
-        seq = [[0 for i in range(2)] for i in range(self.num_target + self.singletasktarget)]
-        seq = np.array(seq)
-        detect_amt = 0
-        dis_amt = 0
-        # dis_det_match = 干扰无人机任务序列中，可以与侦察型匹配的部分。中间变量
-        dis_det_match = [[0 for i in range(2)] for i in range(self.num_target + self.singletasktarget)]
-        dis_det_match = np.array(dis_det_match)
-        dis_det_array = 0
-
-        # comp_det_match = 一体无人机任务序列中，可以与侦察型匹配的部分，中间变量
-        comp_det_match = [[0 for i in range(2)] for i in range(self.num_target + self.singletasktarget)]
-        comp_det_match = np.array(comp_det_match)
-        comp_det_array = 0
-
-        # comp_dis_match = 干扰无人机任务序列中，可以与一体型匹配的部分。中间变量
-        comp_dis_match = [[0 for i in range(2)] for i in range(self.num_target + self.singletasktarget)]
-        comp_dis_match = np.array(comp_dis_match)
-        comp_dis_array = 0
-
-        # comp_dis_match_2 = 一体无人机任务序列中，可以与干扰匹配的部分。中间变量
-        comp_dis_match_2 = [[0 for i in range(2)] for i in range(self.num_target + self.singletasktarget)]
-        comp_dis_match_2 = np.array(comp_dis_match_2)
-        comp_dis_array_2 = 0
-
-        for i in range(len(order)):
-            # 如果是侦察型无人机，序列不做处理
-            if (order[i, 0] < (self.num_uav / 3)):
-                detect_amt += 1
-            # 如果是干扰无人机,分成2类：侦察任务被侦察型完成的，侦察任务被一体型完成的
-            if (order[i, 0] >= (self.num_uav / 3) and order[i, 0] < (self.num_uav / 3 * 2)):
-                dis_det_match_flag = 0
-                for j in range(detect_amt):
-                    # 被分配给侦察无人机的目标，在干扰无人机这里可以找到对应干扰任务
-                    if (order[i, 1] == order[j, 1]):
-                        dis_det_match[dis_det_array] = order[i]
-                        dis_det_array += 1
-                        dis_det_match_flag = 1
-                # 这里走完一遍就可以确认哪些干扰类无人机分配到的任务已经被一体型执行
-                if (dis_det_match_flag == 0):
-                    comp_dis_match[comp_dis_array] = order[i]
-                    comp_dis_array += 1
-                dis_amt += 1
-            # 如果是一体无人机，区分：
-            # 1，需要先执行任务给干扰型无人机做的
-            # 2. 需要执行侦察无人机侦察完的目标的
-            if (order[i, 0] >= (self.num_uav / 3 * 2)):
-                for j in range(detect_amt):
-                    # 一体-侦察匹配
-                    if (order[i, 1] == order[j, 1]):
-                        comp_det_match[comp_det_array] = order[i]
-                        comp_det_array += 1
-
-                for k in range(detect_amt, detect_amt + dis_amt):
-                    if (order[i, 1] == order[k, 1]):
-                        comp_dis_match_2[comp_dis_array_2] = order[i]
-                        comp_dis_array_2 += 1
-        """
-        print("detect amt =",detect_amt)
-        print("dis amt =", dis_amt)
-        print("disdet amt =", dis_det_array)
-        print("compdis amt =", comp_dis_array)
-
-        print("disdet =",dis_det_match)
-        print("compdet =", comp_det_match)
-        print("compdis =", comp_dis_match)
-        """
-        pos = 0
-        orderpos = 0
-        pointer_disdet = 0
-        pointer_compdis = 0
-        # 截至到这里全部匹配完，开始输入排序结果
-        while (orderpos < len(order)):
-
-
-            # 侦察型，不用判断直接输入
-            if (order[orderpos, 0] < (self.num_uav / 3)):
-                seq[pos] = order[orderpos]
-                pos += 1
-                orderpos += 1
-            # 干扰型，顺序为侦察-干扰匹配，干扰-一体匹配
-            if ((order[pos, 0] >= (self.num_uav / 3)) and (order[pos, 0] < (self.num_uav / 3 * 2))):
-                if ((dis_det_match[pointer_disdet, 0] != 0)):
-                    seq[pos] = dis_det_match[pointer_disdet]
-                    pos += 1
-                    pointer_disdet += 1
-                    orderpos += 1
-
-                if (orderpos >= (self.num_target + self.singletasktarget)):
-                    return seq
-
-                if ((dis_det_match[pointer_disdet, 0] == 0) and (comp_dis_match[pointer_compdis, 0] != 0)):
-                    seq[pos] = comp_dis_match[pointer_compdis]
-                    pos += 1
-                    pointer_compdis += 1
-                    orderpos += 1
-
-
-            if (orderpos >= (self.num_target + self.singletasktarget)):
-                return seq
-
-            # 一体型匹配，顺序为一体-干扰，一体-侦察，一体×2
-            if (order[orderpos, 0] >= (self.num_uav / 3 * 2)):
-                seq[orderpos] = order[orderpos]
-                orderpos += 1
-
-                """
-                print("seq =",seq)
-                pos = dis_amt+detect_amt
-
-                posdict = pos + comp_dis_array_2
-                end = len(order)-1
-                if(order[orderpos] in comp_dis_match_2):
-                    seq[pos] = order[orderpos]
-                    orderpos += 1
-                    pos += 1
-                if(order[orderpos] in comp_det_match):
-                    seq[posdict] = order[orderpos]
-                    orderpos += 1
-                    posdict += 1
-
-                if((order[orderpos] not in comp_dis_match_2) and (order[orderpos] not in comp_det_match)):
-                    seq[end] = order[orderpos]
-                    orderpos += 1
-                    end -= 1
-                """
-
-
-
+        #    print("s=",seq)
         return seq
 
     # f1:时间成本-能耗综合函数
@@ -733,6 +581,7 @@ class GaMultiobjective(object):
             seq[i, 1] = seq[i, 1] // 2
         # 这里调用提取子map的函数
 
+        #    print("seq0 =",seq)
         n = 0
         for i in range(self.num_uav):
             for j in range(len(seq)):
@@ -740,12 +589,9 @@ class GaMultiobjective(object):
                     n = n + 1
             seq = self.submap(seq, i, n)
             n = 0
+        #    print("seq1 =", seq)
 
-        #    ord = seq
-        seq = self.timewindow_ord(seq)
         ord = seq
-        #    print("ord =",ord)
-
         if (flag == 0):
             return ord
 
@@ -884,163 +730,6 @@ class GaMultiobjective(object):
 
         return avg_num
 
-    # f4 根据无人机按照时间窗口处理任务的情况评价任务
-    # 输入一个经过解码处理的顺序序列，威胁半径和任务区域信息，返回值为方案可靠性评价
-    # 步骤：
-    # 1. 创建数组，记录以下内容：
-    # *每个任务的开始时间 *每个任务的结束时间 *uav重复性检测
-    # 2. 任务按照队列来执行
-    def f4(self, order, radius, map, timewindow):
-
-        uavtime = [0.00 for i in range(self.num_uav)]  # 每个无人机执行当前工作的时间
-        uavtime = np.array(uavtime)
-        starttime = [0.00 for i in range(2 * self.num_target)]  # 任务开始时间集合
-        starttime = np.array(starttime)
-        endtime = [0.00 for i in range(2 * self.num_target)]  # 任务结束时间集合
-        endtime = np.array(endtime)
-
-        uavinuse = [0 for i in range(self.num_uav)]  # 记录当前无人机是否在队列中
-        uavinuse = np.array(uavinuse)
-
-        q = queue.Queue()
-
-        # 计算无人机完成每个工作所需要的时间
-        tasktime = [0.00 for i in range(2 * self.num_target)]  # 任务开始时间集合
-        tasktime = np.array(tasktime)
-        ord = sorted(order, key=operator.itemgetter(0))
-        ord = np.array(ord)
-        ord = self.timewindow_ord(ord)
-        #    print("ord =",ord)
-        # route = [0 for i in range(self.num_uav)]
-        # route = np.array(route)
-        for i in range(0, len(ord)):
-            ind0 = int(ord[i - 1, 1] / 2)  # 上一个任务的位置索引
-            ind1 = int(ord[i, 1] / 2)  # 当前任务的位置索引
-
-            if (i == 0):  # 0
-                route = map[0, ind1] + 2 * math.pi * radius[ind1]
-
-                if (ord[i, 0] < self.num_uav / 3):
-                    tasktime[ord[i, 1]] = route / self.velocityA
-                if ((ord[i, 0] >= self.num_uav / 3) and (ord[i, 0] < self.num_uav / 3 * 2)):
-                    tasktime[ord[i, 1]] = route / self.velocityB
-                if (ord[i, 0] >= self.num_uav / 3 * 2):
-                    tasktime[ord[i, 1]] = route / self.velocityC
-
-            if (((i > 0) and (i < len(ord) - 1)) and (ord[i, 0] == ord[i + 1, 0])):  # 不是0，但不换无人机
-                route = map[self.num_uav + ind0, ind1] + 2 * math.pi * radius[ind1]
-                if (ord[i, 0] < self.num_uav / 3):
-                    tasktime[ord[i, 1]] = route / self.velocityA
-                if ((ord[i, 0] >= self.num_uav / 3) and (ord[i, 0] < self.num_uav / 3 * 2)):
-                    tasktime[ord[i, 1]] = route / self.velocityB
-                if (ord[i, 0] >= self.num_uav / 3 * 2):
-                    tasktime[ord[i, 1]] = route / self.velocityC
-            if (((i > 0) and (i < len(ord) - 1)) and (ord[i, 0] != ord[i + 1, 0])):  # 不是0，换无人机
-                ind2 = int(ord[i + 1, 1] / 2)  # 下一个任务的位置索引
-                route = map[self.num_uav + ind0, ind1] + 2 * math.pi * radius[ind1] + map[0, ind1]
-                routenext = map[0, ind2]
-                if (ord[i, 0] < self.num_uav / 3):
-                    tasktime[ord[i, 1]] = route / self.velocityA
-                if ((ord[i, 0] >= self.num_uav / 3) and (ord[i, 0] < self.num_uav / 3 * 2)):
-                    tasktime[ord[i, 1]] = route / self.velocityB
-                if (ord[i, 0] >= self.num_uav / 3 * 2):
-                    tasktime[ord[i, 1]] = route / self.velocityC
-                if (ord[i + 1, 0] < self.num_uav / 3):
-                    tasktime[ord[i + 1, 1]] = routenext / self.velocityA
-                if ((ord[i + 1, 0] >= self.num_uav / 3) and (ord[i, 0] < self.num_uav / 3 * 2)):
-                    tasktime[ord[i + 1, 1]] = routenext / self.velocityB
-                if (ord[i + 1, 0] >= self.num_uav / 3 * 2):
-                    tasktime[ord[+1, 1]] = routenext / self.velocityC
-            if (i == len(ord) - 1):  # 最后一个
-                rotue = map[self.num_uav + ind0, ind1] + 2 * math.pi * radius[ind1] + map[0, ind1]
-                if (ord[i, 0] < self.num_uav / 3):
-                    tasktime[ord[i, 1]] = route / self.velocityA
-                if ((ord[i, 0] >= self.num_uav / 3) and (ord[i, 0] < self.num_uav / 3 * 2)):
-                    tasktime[ord[i, 1]] = route / self.velocityB
-                if (ord[i, 0] >= self.num_uav / 3 * 2):
-                    tasktime[ord[i, 1]] = route / self.velocityC
-
-        Que = np.zeros((self.num_target * 2, 2))
-        Que = np.array(Que)
-        pointerstart = 0
-        pointer = 0
-
-        # 主循环，依次插入任务，目的是计算每个任务的开始和结束时间
-        for i in range(len(order)):
-            if (uavinuse[order[i, 0]] == 0):  # 当前无人机可以被插入队列中,先记录信息再入队
-                uavinuse[order[i, 0]] = 1  # 当前无人机已有工作分配
-                starttime[order[i, 1]] = uavtime[order[i, 0]]  # 记录被压入队列的任务的起始时间
-                Que[pointer] = order[i]
-                #    print(Que)
-                pointer = pointer + 1
-                #    pointer = pointer + 1
-                #    print(order[i])
-                #    q.put(order[i])
-                #    print("q=",q)
-                continue  # 避免和第3项引起冲突
-            if (i == len(order) - 1):  # 任务结束时弹出所有无人机
-                while (pointerstart < pointer):
-                    #    task = q.get()
-                    task = Que[pointerstart]
-                    pointerstart = pointerstart + 1
-                    task = np.asarray(task, dtype=int)
-                    endtime[task[1]] = starttime[task[1]] + tasktime[task[1]]  # 计算该任务的结束时间
-                    uavtime[task[0]] = uavtime[task[0]] + tasktime[task[1]]  # 计算无人机的时间
-                    uavinuse[task[0]] = 0  # 把无人机变为已分配状态
-            if ((i < len(order) - 1) and (uavinuse[order[i, 0]] == 1)):  # 当前无人机已被占用，需要弹出队列中所有元素
-                while (pointerstart < pointer):
-                    task = Que[pointerstart]
-                    pointerstart = pointerstart + 1
-                    #    print(task)
-                    task = np.asarray(task, dtype=int)
-                    endtime[task[1]] = starttime[task[1]] + tasktime[task[1]]  # 计算该任务的结束时间
-                    uavtime[task[0]] = uavtime[task[0]] + tasktime[task[1]]  # 计算无人机的时间
-                    uavinuse[task[0]] = 0  # 把无人机变为已分配状态
-                    #    uavinuse[order[i, 0]] = 1  # 当前无人机已有工作分配
-                    #    starttime[order[i, 1]] = uavtime[order[i, 0]]  # 记录被压入队列的任务的起始时间
-                    #    Que[pointer] = order[i]
-                    #    pointer = pointer + 1
-
-                    continue
-
-            # 是否符合时间窗口
-        ex = [1, 3, 6, 11, 14, 17]
-        tw = [0.0 for i in range(len(order))]
-        success = 0
-        for i in range(len(order)):
-            j = int(i / 2)
-            if (i % 2 == 0):
-                if (endtime[i] <= timewindow[j, 0]):
-                    tw[i] = 1
-                    if j not in ex:
-                        timewindow[j, 1] = endtime[i] + 5
-                    success += 1
-                else:
-                    tw[i] = 0.1
-            if (i % 2 == 1):
-                if ((starttime[i] >= timewindow[j, 0]) and (endtime[i] <= timewindow[j, 1])):
-                    tw[i] = 1
-                    success += 1
-                else:
-                    tw[i] = 0.1
-
-            # 评价任务：
-        taskevaluate = [0.00 for i in range(len(order))]
-        taskevaluate = np.array(taskevaluate)
-        ev = 0
-        for i in range(len(order)):
-            if (endtime[i] - starttime[i] < 0):
-                taskevaluate[i] = - (endtime[i] - starttime[i]) / tw[i]
-            if (endtime[i] - starttime[i] > 0):
-                taskevaluate[i] = (endtime[i] - starttime[i]) / tw[i]
-            ev = ev + taskevaluate[i]
-
-        ev = ev / len(order)
-        max_time = np.max(endtime)
-        success = success / (self.num_target * 2 - len(ex))
-        #    print("ev = ", ev)
-        return ev, max_time, success
-
     def setdata(self):
         datapoint = [0 for i in range(0, 10)]
         datapoint[0] = [0.33, 0.18]
@@ -1158,6 +847,7 @@ class GaMultiobjective(object):
         # 快速非支配排序
 
     def fast_non_dominated_sort(self, values):
+
         values11 = values[0]  # 函数1解集
         S = [[] for i in range(0, len(values11))]  # 存放 每个个体支配解的集合。
         front = [[]]  # 存放群体的级别集合，一个级别对应一个[]
@@ -1215,25 +905,39 @@ class GaMultiobjective(object):
 
         return front
 
+        # =============多目标优化：拥挤距离================
 
     def crowding_distance(self, values, front, popsize):
         #   print("front = ",front)
         distance = np.zeros(shape=(popsize,))  # 拥挤距离初始化为0
         for rank in front:  # 遍历每一层Pareto 解 rank为当前等级
-            print("values ",values)
-            print("ranks ", rank)
-            print("len ranks ", len(rank))
-            # for i in range(len(values)):  # 遍历每一层函数值（先遍历群体函数值1，再遍历群体函数值2...）,
-            for i in range(len(rank)): #对该front里每个个体
-                min_distance = 99999.0
-                for j in range(len(rank)):
-                    if(j == i):
-                        continue
-                    dis = self.dis_3d(values[0,rank[i]],values[0,rank[j]],values[1,rank[i]],values[1,rank[j]],values[2,rank[i]],values[2,rank[j]])
-                    if((dis < min_distance) and (dis > 0)):
-                        max_distance = dis
-                distance[rank[i]] = min_distance
+            # print("rank ",rank)
+            for i in range(len(values)):  # 遍历每一层函数值（先遍历群体函数值1，再遍历群体函数值2...）,
+                # 这层循环会执行i次，即value中的值个数，本问题中为2
+                # print("i = ",i)
+                valuesi = [values[i][A] for A in rank]  # 取出rank等级 对应的  目标函数值i 集合
+                # print("rank ",i," = ",valuesi)
+                rank_valuesi = zip(rank, valuesi)  # 将rank,群体函数值i集合在一起
+                sort_rank_valuesi = sorted(rank_valuesi, key=lambda x: (x[1], x[0]))  # 先按函数值大小排序，再按序号大小排序
+                # 这里先排x1再排x0，可以保证值是升序排列的
+                #    print("value ",i," = ",sort_rank_valuesi)
+                sort_ranki = [j[0] for j in sort_rank_valuesi]  # 排序后当前等级rank
+                #    print("rank = ",sort_ranki)
+                sort_valuesi = [j[1] for j in sort_rank_valuesi]  # 排序后当前等级对应的 群体函数值i
+                #    print("values = ",sort_valuesi)
+                # print(sort_ranki[0],sort_ranki[-1])
+                distance[sort_ranki[0]] = np.inf  # rank 等级 中 的最优解 距离为inf
+                distance[sort_ranki[-1]] = np.inf  # rank 等级 中 的最差解 距离为inf
 
+                # 计算rank等级中，除去最优解、最差解外。其余解的拥挤距离,注意这里是根据在某个具体函数上的表现来计算
+                # 首先这里肯定是从1到rank-1，这样会计算除了头尾的值
+                # 其次归一化之后值不可能超过1
+                # pareto前沿的性质决定了，按照value1排序得出的序列和value2是相反的。
+                # 由这里计算得出的values值，就是拥挤距离，也就是上一个解和下一个解围成的矩形周长，由于长宽分别经过归一化处理，这里dis≤2。
+                for j in range(1, len(rank) - 1):
+                    distance[sort_ranki[j]] = distance[sort_ranki[j]] + (sort_valuesi[j + 1] - sort_valuesi[j - 1]) / (
+                            max(sort_valuesi) - min(sort_valuesi))  # 计算距离
+                #   print("values ",i," 's dist =  ",distance[sort_ranki[j]])
         # 按照格式存放distances
         distanceA = [[] for i in range(len(front))]  #
         for j in range(len(front)):  # 遍历每一层Pareto 解 rank为当前等级
@@ -1247,7 +951,7 @@ class GaMultiobjective(object):
     def elitism(self, front, distance, solution):
         #   输入格式和内容没有问题
         #   print("front =",front)
-        print("distance =",distance)
+        #   print("distance =",distance)
         #   print("solution =",solution)
 
         # 思路是直接用编号来筛选解
@@ -1285,6 +989,30 @@ class GaMultiobjective(object):
         return X1
 
 
+
+    # 参考点为（30，12）
+    # 计算Hypervolume，把front从小到大排
+
+    def HV(self, front, num):
+        # 这里需要排序
+
+
+        front = sorted(front,key=lambda x:x[0])
+        front = np.array(front)
+
+
+
+        hv = 0.0
+        volume = 0.0
+        for i in range(0, num):
+            if (i == 0):
+                volume = (24-front[i,0])  * (15-front[i,1])
+            if (i > 0):
+                volume = (24-front[i,0])  * (front[i-1,1] - front[i,1])
+
+            hv = hv + volume
+
+        return hv
 
     # 根据父代排名选择概率
     # 返回一个取值范围为0到1之间的列表
@@ -1325,7 +1053,7 @@ class GaMultiobjective(object):
             p10 = self.decode(p)
 
             # 计算新生成个体的适应度值
-            x = self.f1(p10, radius, map,1)
+            x = self.f1(p10, radius, map)
             y = self.f3(p10)
             if (i == 0):
                 res[0, 0] = x
@@ -1357,11 +1085,8 @@ class GaMultiobjective(object):
         parent = np.array(parent)
         parentchild10 = np.zeros((2 * self.NP, self.num_target + self.singletasktarget, 2))
         parentchild10 = np.array(parentchild10)
-        #    parenttwo = np.random.randint(0, 2, (self.NP, self.Len))  # 随机获得二进制 初始种群f.shape (50,1, 20) .1表示有1个变量
-        parenttwo = self.pre(threat, map)
-        timewindow = np.zeros((self.num_target, 2))
-        timewindow = np.array(timewindow)
-        timewindow = self.settimewindow(timewindow)
+        parenttwo = np.random.randint(0, 2, (self.NP, self.Len))  # 随机获得二进制 初始种群f.shape (50,1, 20) .1表示有1个变量
+        #parenttwo = self.pre(threat, map)
         min_f1 = 100
         min_f2 = 100
         #    print(parenttwo)
@@ -1372,37 +1097,20 @@ class GaMultiobjective(object):
         #    for i in range(self.NP):
         #        parent[i] = self.decode(parenttwo[i])
         #    parent = np.asarray(parent,dtype=int)
-        paretovalues1 = []
-        paretovalues2 = []
-
         f1_values = [0.0 for i in range(self.max_gen)]
         f1_values = np.array(f1_values)
         f2_values = [0.0 for i in range(self.max_gen)]
         f2_values = np.array(f2_values)
-        front1_values = [0.0 for i in range(self.max_gen)]
-        front1_values = np.array(front1_values)
-        front2_values = [0.0 for i in range(self.max_gen)]
-        front2_values = np.array(front2_values)
-        f1_min = [0.0 for i in range(self.max_gen)]
-        f1_min = np.array(f1_min)
-        f3_min = [0.0 for i in range(self.max_gen)]
-        f3_min = np.array(f3_min)
-        max_time = [0.0 for i in range(self.max_gen)]
-        max_time = np.array(max_time)
-        success = [0.0 for i in range(self.max_gen)]
-        success = np.array(success)
+
         HV = [0.0 for i in range(self.max_gen)]
         HV = np.array(HV)
-        pm_trigger = 0
-        pc_trigger = 0
-        last_front = []
-        cnt = 0
-        pm = self.Pm
-        pc = self.Pc
+        f1_min = [0.0 for i in range(self.max_gen)]
+        f1_min = np.array(f1_min)
+        parent = np.array(parent)
 
         hv = 0.0
         gen = 0
-        plt.ion()
+        #plt.ion()
         p_choice = np.zeros(self.NP)
         p_choice = np.array(p_choice)
         p_choice = self.parent_choice(0, 2, self.NP)
@@ -1413,9 +1121,7 @@ class GaMultiobjective(object):
 
         for j in tqdm(range(self.max_gen)):
             plt.clf()
-            if (pm_trigger == 0):
-                pm = self.Pm + (self.max_Pm - self.Pm) * (gen / self.max_gen)
-
+            #    print("第 ",gen," 代交叉前个体 =",parenttwo[0])
 
             # 这里等于是错误的把parent2的值改变了，变成了x1，然后等于把2个一样的种群合一起了
             # 现在x1和parent2都指向了同一处内存空间
@@ -1424,27 +1130,23 @@ class GaMultiobjective(object):
 
             pr2 = copy.copy(parenttwo)  # 交叉前的种群
             child = copy.copy(parenttwo)  # 交叉前的种群
+        #    print("parent 2 first before nsga=", parenttwo[0])
 
-
+            #    print("第 ", gen, " 代交叉前pr2 =", pr2[0])
             for i in range(0, self.NP, 2):
-                if (pc_trigger == 0):
+                if (gen == 0):
                     father1 = i  # 随机选择一个（0-NP）之间的整数
-                    father2 = i + 1  # 随机选择一个（0-NP）之间的整数
-                # 种群内个体集中已经达到一定数值
-                if (pc_trigger == 1):
-                    father1 = random.randint(0, self.NP - 1)
-                    father2 = random.randint(0, self.NP - 1)
-                    # 重新选择第2个个体来进行交叉变异过程
-                    while (np.array_equal(pr2[father1], pr2[father2])):
-                        father2 = random.randint(0, self.NP - 1)
+                    father2 = i+1 # 随机选择一个（0-NP）之间的整数
 
-                p1 = np.random.random()
-                p2 = np.random.random()
-                if (p1 < pc):
+
+
+                p = np.random.random()
+                if (p < self.Pc):
                     child[i], child[i + 1] = self.crossover(pr2[father1], pr2[father2])
-                if (p2 > 1 - pm):
-                    child[i] = self.Mutation(pr2[father1], 0.1)
-                    child[i + 1] = self.Mutation(pr2[father2], 0.1)
+                if (p > self.Pc):
+                    child[i] = self.Mutation(pr2[father1], self.Pm)
+                    child[i + 1] = self.Mutation(pr2[father2], self.Pm)
+
             #    X1 = self.Crossover(parenttwo, self.Pc)  # 交叉操作 X1为交叉后群体
             #    print("第 ", gen, " 代x1操作后个体 =", X1[0])
             #    print("第 ", gen, "代x1后parent =", parenttwo[0])
@@ -1481,60 +1183,33 @@ class GaMultiobjective(object):
                 # values2[i] = self.f2(parentchild10[i],threat,map)
                 values2[i] = self.f3(parentchild10[i])
 
-            values3 = np.zeros(shape=len(parentchild10), )
-            for i in range(len(parentchild10)):  # 遍历每一个个体
-                # values2[i] = self.f2(parentchild10[i],threat,map)
-                values3[i], max_time[gen], success[gen] = self.f4(parentchild10[i], threat, map, timewindow)
+            if (min(values2) < min_f2):
+                min_f2 = min(values2)
 
             f1_values[gen] = np.mean(values1)
             f2_values[gen] = np.mean(values2)
             f1_min[gen] = np.min(values1)
-            f3_min[gen] = np.min(values3)
 
-            values = [values1, values2, values3]
+            values = [values1, values2]
             values = np.array(values)
+
+
             # 到这里，的确是算出了100个数值
 
             front = self.fast_non_dominated_sort(values)
-            ans = front[0]  # 保存这代最佳个体
+            ans = front[0]
             front_0 = np.unique(front[0])
 
-            if ((len(ans) / self.NP) >= 0.9357):
-                pc_trigger = 1
-            if ((len(ans) / self.NP) < 0.9357):
-                pc_trigger = 0
+
 
             sol = []
             for i in range(len(front_0)):
-                v1 = values[0, front_0[i]]
-                v2 = values[1, front_0[i]]
-                v3 = values[2, front_0[i]]
-                sol.append([v1, v2,v3])
+                v1 = values[0,front_0[i]]
+                v2 = values[1,front_0[i]]
+                sol.append([v1,v2])
 
-            front_0_sol = np.array(sol)
-            front_0_val = np.unique(front_0_sol, axis=0)
-            front_0_sorted = sorted(front_0_val, key=lambda x: (x[1], x[0]), reverse=True)
-            front_0_sorted = np.array(front_0_sorted)
-            if (gen == 0):
-                last_front = front_0_sorted
-                last_front = np.array(last_front)
-            if (gen >= 1):
-                if (np.array_equal(front_0_sorted, last_front) == True):
-                    cnt += 1
+            HV[gen] = self.HV(sol, len(sol))
 
-                if (np.array_equal(front_0_sorted, last_front) == False):
-                    cnt = 0
-                    pm = self.Pm + (self.max_Pm - self.Pm) * (gen / self.max_gen)
-                    last_front = front_0_sorted
-                    last_front = np.array(last_front)
-                    pm_trigger = 0
-            if (cnt >= 5):
-                pm = self.Pm + (self.max_Pm - self.Pm) * (gen / self.max_gen) + 0.1
-                if (pm >= self.max_Pm):
-                    pm = self.max_Pm
-                pm_trigger = 1
-
-           # HV[gen] = self.HV(sol, len(sol))
 
             distanceA = self.crowding_distance(values, front, 2 * self.NP)
             #    print("distanceA =",distanceA)
@@ -1545,18 +1220,58 @@ class GaMultiobjective(object):
             parenttwo = np.array(X3)
             parenttwo = parenttwo.reshape(self.NP, self.Len)
 
+            # 画图并动态更新
+            resultf1 = [0.00 for i in range(0, len(front[0]))]
+            resultf1 = np.array(resultf1)
+
+            resultf2 = [0.00 for i in range(0, len(front[0]))]
+            resultf2 = np.array(resultf2)
+
+            for i in range(0, len(front[0])):
+                resultf1[i] = values1[ans[i]]
+                resultf2[i] = values2[ans[i]]
+
+            val = [resultf1, resultf2]
+
+
+            """
+        #    print(gen + 1, " ", hv)
+        #    print("gen #",gen," 's value =",val)
+            plt.xlim(16.5,22.5)  #20目标6uav适用
+        #    plt.xlim(12,17.5)
+            plt.ylim(-0.5, 10.5)  #20目标6uav
+        #    plt.ylim(-0.5,8.5)
+            plt.scatter(resultf1, resultf2, s=20, marker='o')
+            plt.pause(0.01)
+            """
+            """
+            #——————————————————————————————————————
+            resultf1 = [0.00 for i in range(0, len(front[0]))]
+            resultf1 = np.array(resultf1)
+            resultf2 = [0.00 for i in range(0, len(front[0]))]
+            resultf2 = np.array(resultf2)
+            for i in range(0, len(front[0])):
+                resultf1[i] = values1[i]
+                paretovalues1.append(resultf1[i])
+                resultf2[i] = values2[i]
+                paretovalues2.append(resultf2[i])
+            #val = [resultf1, resultf2]
+
+            #distance = np.concatenate([distance,val],axis=0)
+            """
 
             gen = gen + 1
 
         # 循环结束
+        # 其实到这里最后一代已经是排好序的了
         # 对最后一代的2进制种群解码
-        m_time = 0.0
-        suc = 0.0
-
         for i in range(self.NP):
             parent[i] = self.decode(parenttwo[i])
         parent = np.asarray(parent, dtype=int)
 
+        print(len(parent))
+
+        values1 = np.zeros(shape=len(parent), )
         # 解码后计算适应值
         ordtotal = []
         for i in range(len(parent)):  # 遍历每一个个体
@@ -1574,53 +1289,65 @@ class GaMultiobjective(object):
                     ordtotal = np.concatenate((ordtemp, ord), axis=0)
 
         out = pd.DataFrame(ordtotal)
-        writer = pd.ExcelWriter('improved NSGA-II dset1 solution 15.xlsx')
+        writer = pd.ExcelWriter('NSGA-II origin HV solution 15.xlsx')
         out.to_excel(writer, sheet_name='example1', float_format='%.4f')
         writer._save()
         writer.close()
-
-
-        values1 = np.zeros(shape=len(parent), )
-        for i in range(len(parent)):  # 遍历每一个个体
-            values1[i] = self.f1(parent[i], threat, map,1)
 
         values2 = np.zeros(shape=len(parent), )
         for i in range(len(parent)):  # 遍历每一个个体
             #    values2[i] = self.f2(parent[i], threat, map)
             values2[i] = self.f3(parent[i])
 
-        values3 = np.zeros(shape=len(parent), )
-        for i in range(len(parent)):  # 遍历每一个个体
-            values3[i], m_time, suc = self.f4(parentchild10[i], threat, map, timewindow)
-
-        values = [values1, values2, values3]
+        values = [values1, values2]
         #    print(values)
+        print(len(values[0]))
+        print(len(values[1]))
         front = self.fast_non_dominated_sort(values)
         ans = front[0]
-        #    print(front)
 
+
+
+        """
+        #paretovalues = [paretovalues1,paretovalues2]
+
+        front2 = self.fast_non_dominated_sort(paretovalues)
+        front2 = np.array(front2)
+        print("front2 = ",front2[0])
+        front3 = front2[0]
+
+        result1 = [0.00 for i in range(0, len(front3))]
+        result1 = np.array(result1)
+        result2 = [0.00 for i in range(0, len(front3))]
+        result2 = np.array(result2)
+        for i in range(0, len(front3)):
+            result1[i] = paretovalues1[front3[i]]
+            result2[i] = paretovalues2[front3[i]]
+        val = [result1,result2]
+        """
         resultf1 = [0.00 for i in range(0, len(front[0]))]
         resultf1 = np.array(resultf1)
         resultf2 = [0.00 for i in range(0, len(front[0]))]
         resultf2 = np.array(resultf2)
-        resultf3 = [0.00 for i in range(0, len(front[0]))]
-        resultf3 = np.array(resultf3)
         for i in range(0, len(front[0])):
             resultf1[i] = values1[ans[i]]
             resultf2[i] = values2[ans[i]]
-            resultf3[i] = values3[ans[i]]
-        val = [resultf1, resultf2, resultf3]
-        print(ans)
+        val = [resultf1, resultf2]
+
+
+        # 输出结果导入excel
 
         Ans = []
-        Ans.append(resultf1)
-        Ans.append(resultf2)
-        Ans.append(resultf3)
-      #  Ans.append(HV)
+        Ans.append(f1_values) #种群平均f1值
+        Ans.append(f2_values) #种群平均f2值
+        Ans.append(HV)        #HV指标
+        Ans.append(resultf1)  #f1值
+        Ans.append(resultf2)  #f2值
+        Ans.append(f1_min)    #f1最小值
 
-        print("ans = ", Ans)
+
         output = pd.DataFrame(Ans)
-        writer = pd.ExcelWriter('improved NSGA-II timewindow final 15.xlsx')
+        writer = pd.ExcelWriter('NSGA-II origin HV 15.xlsx')
         output.to_excel(writer, sheet_name='example2', float_format='%.4f')
         writer._save()
         writer.close()
